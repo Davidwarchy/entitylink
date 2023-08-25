@@ -23,7 +23,7 @@ def read_top_100_rows():
     Read and return the top 100 rows from the destination table
     """
     query = """
-            SELECT *
+            SELECT title, subject, qid, qidDescription
             FROM destination
             LIMIT 100;
             """
@@ -32,9 +32,25 @@ def read_top_100_rows():
         cursor.execute(query)
         rows = cursor.fetchall()
         return rows
-        
+
+def read_top_100_rows_with_qid():
+    """
+    Read and return the top 100 rows from the destination table where qid is not None, null, or empty
+    """
+    query = """
+            SELECT title, subject, qid, qidDescription
+            FROM destination
+            WHERE qid IS NOT NULL AND qid != ''
+            LIMIT 100;
+            """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return rows
+
 # Example usage
 if __name__ == "__main__":
-    rows = read_top_100_rows()
+    rows = read_top_100_rows_with_qid()
     for row in rows:
         print(row)
