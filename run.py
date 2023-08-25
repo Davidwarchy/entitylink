@@ -5,15 +5,15 @@ def get_db_connection():
     return pyodbc.connect(DB_CONNECTION_STRING)
 
 def process_phrases_serial_test():
-    subjects = get_subjects_otry()
+    subjects = get_subjects()
     for subject in subjects:
         try:
             print(subject)
-            otrx_id, noun_phrase = subject
+            article_id, noun_phrase = subject
             noun_phrase = noun_phrase.strip() 
-            sentence = get_text_for_triple(otrx_id)
+            sentence = get_text_for_triple(article_id)
 
-            result = get_best_candidate(otrx_id, sentence, noun_phrase)
+            result = get_best_candidate(article_id, sentence, noun_phrase)
             
             # result = find(sentence, noun_phrase)
 
@@ -21,12 +21,12 @@ def process_phrases_serial_test():
                 try:
                     qid = result['id']
                     desc = result['description']
-                    add_qid_desc_to_db(otrx_id, qid, desc)
+                    add_qid_desc_to_db(article_id, qid, desc)
                 except Exception as e:
                     print(f"Error adding to OTRY: {e}")
 
         except Exception as e:
-            print(f'Error handling subject {otrx_id} : {e}')
+            print(f'Error handling subject {article_id} : {e}')
         finally:
             time.sleep(2)
 
@@ -38,22 +38,29 @@ def add_qid_desc_to_db(otry_id, qid, desc):
         cursor = conn.cursor()
         cursor.execute( query, (qid, desc, otry_id))
 
-def get_subjects_otry():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute( """
-                        SELECT			TOP 100
-                                        t0.id,
-                                        t0.subject
-                        FROM			OTRY t0
-                                        INNER JOIN OART t1 ON t0.idArticle = t1.id
+import sqlite3
+PATH_DB = 'source.db'
 
-                        WHERE			t1.lang = 'en'
-										AND  t0.isCheckedSubject <> 1
-                        ORDER BY		T0.id DESC
-                        """)
-        return cursor.fetchall()
+def get_subjects():
+    """
+    function to get the subjects (mentions) from the database 
+    """
+    with sqlite3.connect(PATH_DB) as conn:
+        # Create a cursor object to execute SQL queries
+        cursor = conn.cursor()
+
+        # Search for the given phrase in the local knowledge graph using the OLKG table
+        select_query = """
+                        SELECT  id, subject
+                        FROM    destination
+                        LIMIT   100;
+                        """
+
+        cursor.execute(select_query)
+        results = cursor.fetchall()
     
+    return results
+
 def get_text_for_triple(otrx_id):
     """
     get a sentence corresponding to a triple
