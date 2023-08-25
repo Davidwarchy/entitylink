@@ -1,42 +1,45 @@
 from config import DB_CONNECTION_STRING
-import time, pyodbc 
-
-def get_db_connection():
-    return pyodbc.connect(DB_CONNECTION_STRING)
+import time
 
 def process_phrases_serial_test():
     subjects = get_subjects()
     for subject in subjects:
         try:
-            print(subject)
-            article_id, noun_phrase = subject
+            article_id, title, text, noun_phrase = subject
             noun_phrase = noun_phrase.strip() 
-            sentence = get_text_for_triple(article_id)
 
-            result = get_best_candidate(article_id, sentence, noun_phrase)
+            result = get_best_candidate(article_id, text, noun_phrase)
             
-            # result = find(sentence, noun_phrase)
 
             if result:
                 try:
                     qid = result['id']
-                    desc = result['description']
-                    add_qid_desc_to_db(article_id, qid, desc)
+                    qid_description = result['description']
+                    add_qid_to_db(article_id, qid, qid_description)
                 except Exception as e:
-                    print(f"Error adding to OTRY: {e}")
+                    print(f"Error adding entity to local database: {e}")
 
         except Exception as e:
             print(f'Error handling subject {article_id} : {e}')
         finally:
             time.sleep(2)
 
-def add_qid_desc_to_db(otry_id, qid, desc):
+def get_db_connection():
+    return sqlite3.connect(PATH_DB)
+
+def add_qid_to_db(id_article, qid, qid_description):
+    """
+    Update the qid column in the destination table with the given qid for the specified otry_id
+    """
     query = """
-            UPDATE OTRY SET qidSubject = ?, wdDescriptionSubject = ? where id = ? 
+            UPDATE destination
+            SET qid = ?, qidDescription = ?
+            WHERE id = ? 
             """
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute( query, (qid, desc, otry_id))
+        cursor.execute(query, (qid, qid_description, id_article))
+        conn.commit()
 
 import sqlite3
 PATH_DB = 'source.db'
@@ -45,13 +48,13 @@ def get_subjects():
     """
     function to get the subjects (mentions) from the database 
     """
-    with sqlite3.connect(PATH_DB) as conn:
+    with get_db_connection() as conn:
         # Create a cursor object to execute SQL queries
         cursor = conn.cursor()
 
         # Search for the given phrase in the local knowledge graph using the OLKG table
         select_query = """
-                        SELECT  id, subject
+                        SELECT  id, title, text, subject
                         FROM    destination
                         LIMIT   100;
                         """
@@ -59,24 +62,9 @@ def get_subjects():
         cursor.execute(select_query)
         results = cursor.fetchall()
     
-    return results
+    return results    
 
-def get_text_for_triple(otrx_id):
-    """
-    get a sentence corresponding to a triple
-    """
-    query = "SELECT text FROM OART WHERE id = (SELECT idArticle FROM OTRX WHERE id = ? )"
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute( query, (otrx_id))
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-        else:
-            return None
-        
-
-def get_best_candidate(otry_id, sentence, query):
+def get_best_candidate(article_id, sentence, query):
     """
     given a query phrase, we want to return an entity in the knowledge graph that is most likely a match for the query
     """
@@ -95,7 +83,6 @@ def get_best_candidate(otry_id, sentence, query):
         candidate['similarity_score'] = calculate_similarity(sentence_context, candidate['context'])
     
     best_candidate = mark_best_candidate(candidates)
-    store_stats_to_db( otry_id, sentence_context, candidates)
 
     if best_candidate['similarity_score'] > 0:
         return best_candidate
@@ -131,35 +118,6 @@ def mark_best_candidate(candidates):
         else:
             candidate['is_best_candidate'] = 0
     return best_candidate
-
-def store_stats_to_db(otry_id, sentence_context, candidates):
-    # 
-    sentence_context = ', '.join(sentence_context)
-
-    # Store the information in the database
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-
-        for candidate in candidates:
-            qid_candidate = candidate['id']
-            label_candidate = candidate['label']
-            description_candidate = candidate['description']
-            context_candidate = ' '.join(candidate['context'])
-            score_similarity = candidate['similarity_score']
-
-            # Check if the 'is_best_candidate' key exists in the candidate dictionary
-            if 'is_best_candidate' in candidate:
-                is_best_candidate = candidate['is_best_candidate']
-            else:
-                is_best_candidate = 0  # Default value if the key is not present
-
-            insert_query = """
-            INSERT INTO TRY1 (idOtrc, contextSentence, qidCandidate, labelCandidate, descriptionCandidate, contextCandidate, scoreSimilarity, isBestCandidate, dateSimilarityScore)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
-            """
-            cursor.execute(insert_query, (otry_id, sentence_context, qid_candidate, label_candidate, description_candidate, context_candidate, score_similarity, is_best_candidate))
-
-    return
 
 import spacy
 
