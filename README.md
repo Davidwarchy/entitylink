@@ -13,6 +13,16 @@ Run pip on the command prompt to see if it's installed
 1. The project installs dependencies automatically if prerequisites are installed well.
 2. This has been tested only on windows and may break on linux
 
+# Download or Clone Project
+## Download and Unzip
+
+![image](https://github.com/Davidwarchy/entitylink/assets/17954362/e3664903-caa8-4643-a12b-c18a34b75691)
+
+## Clone 
+
+```git clone https://github.com/Davidwarchy/entitylink.git```
+
+
 # Run 
 To get entities from wikidata into our local database 'source.db'
 
