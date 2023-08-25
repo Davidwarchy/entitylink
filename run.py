@@ -1,5 +1,28 @@
-from config import DB_CONNECTION_STRING
+from config import PATH_DB
 import time
+import subprocess
+
+def install_requirements():
+    try:
+        subprocess.check_call(['pip', 'install', '-r', 'requirements.txt'])
+        print("Requirements installed successfully.")
+    except subprocess.CalledProcessError:
+        print("Failed to install requirements.")
+
+install_requirements()
+
+## IMPORT SPACY AND DOWNLOAD MODEL IF NOT ALREADY DOWNLOADED
+import spacy
+from spacy.util import get_installed_models
+
+model_name = "en_core_web_sm"
+
+if model_name in get_installed_models():
+    print(f"{model_name} is already available.")
+else:
+    print(f"{model_name} is not available. Downloading...")
+    spacy.cli.download(model_name)
+    print(f"{model_name} has been downloaded and installed.")
 
 def process_phrases_serial_test():
     subjects = get_subjects()
@@ -7,6 +30,7 @@ def process_phrases_serial_test():
         try:
             article_id, title, text, noun_phrase = subject
             noun_phrase = noun_phrase.strip() 
+            print(title)
 
             result = get_best_candidate(article_id, text, noun_phrase)
             

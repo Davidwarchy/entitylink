@@ -1,0 +1,4 @@
+Requests==2.31.0
+spacy
+wikidataintegrator
+joblib
