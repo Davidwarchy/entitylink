@@ -70,7 +70,7 @@ PATH_DB = 'source.db'
 
 def get_subjects():
     """
-    function to get the subjects (mentions) from the database 
+    Function to get the subjects (mentions) from the database
     """
     with get_db_connection() as conn:
         # Create a cursor object to execute SQL queries
@@ -78,15 +78,16 @@ def get_subjects():
 
         # Search for the given phrase in the local knowledge graph using the OLKG table
         select_query = """
-                        SELECT  id, title, text, subject
-                        FROM    destination
-                        LIMIT   100;
+                        SELECT id, title, text, subject
+                        FROM destination
+                        WHERE qid IS NULL OR qid = ''
+                        LIMIT 100;
                         """
 
         cursor.execute(select_query)
         results = cursor.fetchall()
-    
-    return results    
+
+    return results  
 
 def get_best_candidate(article_id, sentence, query):
     """
